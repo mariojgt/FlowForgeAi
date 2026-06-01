@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #18181b;
+  background: #f6f7f9;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 1180px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.react-flow__node {
+  font-family: inherit;
+}
+
+.react-flow__edge-path {
+  stroke: #71717a;
+  stroke-width: 2;
+}
+
+.react-flow__edge.animated .react-flow__edge-path {
+  stroke: #14b8a6;
+  stroke-dasharray: 8;
+  animation-duration: 0.8s;
+}
+
+.react-flow__connection-path {
+  stroke: #14b8a6;
+  stroke-width: 2;
+}
+
+.react-flow__controls-button {
+  border-color: #e4e4e7 !important;
+  background: #fff !important;
+}
+
+.react-flow__minimap-mask {
+  fill: rgb(20 184 166 / 0.08);
+}
+
+.markdown-result h1,
+.markdown-result h2,
+.markdown-result h3 {
+  margin: 0.5rem 0;
+  font-weight: 700;
+  color: #18181b;
+}
+
+.markdown-result p {
+  margin: 0.5rem 0;
+}
+
+.markdown-result ul,
+.markdown-result ol {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+
+.markdown-result code,
+pre {
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+}
