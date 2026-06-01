@@ -11,7 +11,7 @@ FlowForge AI runs entirely in the browser and is designed for GitHub Pages. It l
 - Topological workflow execution with cycle prevention and node status tracking
 - Mock streaming AI provider with a pluggable provider interface for future OpenAI, Anthropic, or browser AI integrations
 - Bring-your-own-token model settings stored in browser `localStorage`
-- OpenAI-compatible streaming chat completions support for real LLM runs
+- OpenAI-compatible, Anthropic Claude, and Google Gemini streaming support for real LLM runs
 - Save, load, rename, and delete workflows in `localStorage`
 - JSON import/export plus drag-and-drop workflow import
 - Shareable URL hashes for portable workflows
@@ -40,9 +40,9 @@ The app is served with a `/FlowForgeAi/` base path to match the GitHub Pages dep
 
 ## Model Tokens
 
-Open the `Models` control in the top bar to add an API token, base URL, and default model. Tokens are stored only in the current browser with `localStorage`; they are never committed to the repository or exported with workflows.
+Open the `Models` control in the top bar to choose OpenAI-compatible, Anthropic Claude, Google Gemini, or Mock mode. Add the API token, base URL, and default model for the selected provider. Tokens are stored only in the current browser with `localStorage`; they are never committed to the repository or exported with workflows.
 
-The real provider uses an OpenAI-compatible `/chat/completions` streaming API. Providers must allow browser requests from GitHub Pages, otherwise the request can be blocked by CORS. For production use, route model calls through a backend proxy instead of calling providers directly from the browser.
+The OpenAI-compatible provider uses `/chat/completions`, Anthropic uses `/messages`, and Google Gemini uses `streamGenerateContent`. Providers must allow browser requests from GitHub Pages, otherwise the request can be blocked by CORS. For production use, route model calls through a backend proxy instead of calling providers directly from the browser.
 
 ## Build
 

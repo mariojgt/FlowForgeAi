@@ -16,7 +16,11 @@ import {
   clearModelSettings,
   defaultModelSettings,
   loadModelSettings,
+  modelPresets,
+  providerDefaults,
+  providerLabels,
   saveModelSettings,
+  type ModelProvider,
   type ModelSettings,
 } from "../providers/modelSettings";
 import { useWorkflowStore } from "../store/workflowStore";
@@ -200,10 +204,21 @@ export function TopBar() {
 function ModelSettingsDialog({ onClose }: { onClose: () => void }) {
   const [settings, setSettings] = useState<ModelSettings>(() => loadModelSettings());
   const [status, setStatus] = useState<"idle" | "saved" | "cleared">("idle");
+  const selectedPresets = modelPresets[settings.provider];
 
   const update = (patch: Partial<ModelSettings>) => {
     setStatus("idle");
     setSettings((current) => ({ ...current, ...patch }));
+  };
+
+  const updateProvider = (provider: ModelProvider) => {
+    setStatus("idle");
+    setSettings((current) => ({
+      ...current,
+      ...providerDefaults[provider],
+      provider,
+      apiKey: provider === current.provider ? current.apiKey : "",
+    }));
   };
 
   return (
@@ -235,11 +250,15 @@ function ModelSettingsDialog({ onClose }: { onClose: () => void }) {
             <Select
               value={settings.provider}
               onChange={(event) =>
-                update({ provider: event.target.value as ModelSettings["provider"] })
+                updateProvider(event.target.value as ModelProvider)
               }
             >
-              <option value="openai-compatible">OpenAI-compatible API</option>
-              <option value="mock">Mock provider</option>
+              <option value="openai-compatible">
+                {providerLabels["openai-compatible"]}
+              </option>
+              <option value="anthropic">{providerLabels.anthropic}</option>
+              <option value="google">{providerLabels.google}</option>
+              <option value="mock">{providerLabels.mock}</option>
             </Select>
           </Field>
 
@@ -248,7 +267,7 @@ function ModelSettingsDialog({ onClose }: { onClose: () => void }) {
               type="password"
               autoComplete="off"
               value={settings.apiKey}
-              placeholder="sk-..."
+              placeholder={tokenPlaceholder(settings.provider)}
               disabled={settings.provider === "mock"}
               onChange={(event) => update({ apiKey: event.target.value })}
             />
@@ -264,11 +283,17 @@ function ModelSettingsDialog({ onClose }: { onClose: () => void }) {
             </Field>
             <Field label="Default model">
               <Input
+                list="flowforge-model-presets"
                 value={settings.defaultModel}
-                placeholder="gpt-4.1-mini"
+                placeholder={providerDefaults[settings.provider].defaultModel}
                 disabled={settings.provider === "mock"}
                 onChange={(event) => update({ defaultModel: event.target.value })}
               />
+              <datalist id="flowforge-model-presets">
+                {selectedPresets.map((model) => (
+                  <option key={model} value={model} />
+                ))}
+              </datalist>
             </Field>
           </div>
 
@@ -284,7 +309,8 @@ function ModelSettingsDialog({ onClose }: { onClose: () => void }) {
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-800">
             Browser-only tokens are convenient for demos, but they are visible to
             the person using the browser. For production teams, put provider
-            calls behind a small backend proxy.
+            calls behind a small backend proxy. Anthropic and Gemini browser
+            calls also depend on the provider allowing CORS from GitHub Pages.
           </div>
         </div>
 
@@ -324,6 +350,18 @@ function ModelSettingsDialog({ onClose }: { onClose: () => void }) {
       </div>
     </div>
   );
+}
+
+function tokenPlaceholder(provider: ModelProvider) {
+  if (provider === "google") {
+    return "Google AI Studio API key";
+  }
+
+  if (provider === "anthropic") {
+    return "Anthropic API key";
+  }
+
+  return "sk-...";
 }
 
 function SavedWorkflowRow({
