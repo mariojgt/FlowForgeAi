@@ -205,17 +205,25 @@ function NodeConfigFields({
   }
 
   if (nodeType === "llm") {
+    const legacyMockModel = String(config.model ?? "").startsWith("mock-");
+
     return (
       <div className="space-y-4">
-        <Field label="Model">
+        <Field label="Provider">
           <Select
-            value={String(config.model ?? "mock-fast")}
-            onChange={(event) => updateConfig({ model: event.target.value })}
+            value={String(config.provider ?? (legacyMockModel ? "mock" : "saved"))}
+            onChange={(event) => updateConfig({ provider: event.target.value })}
           >
-            <option value="mock-fast">mock-fast</option>
-            <option value="mock-balanced">mock-balanced</option>
-            <option value="mock-creative">mock-creative</option>
+            <option value="saved">Saved model settings</option>
+            <option value="mock">Mock provider</option>
           </Select>
+        </Field>
+        <Field label="Model">
+          <Input
+            value={String(config.model ?? "")}
+            placeholder="Use saved default model"
+            onChange={(event) => updateConfig({ model: event.target.value })}
+          />
         </Field>
         <Field label={`Temperature: ${Number(config.temperature ?? 0.4).toFixed(1)}`}>
           <input

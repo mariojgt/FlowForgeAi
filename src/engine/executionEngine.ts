@@ -155,8 +155,12 @@ async function runNode(
     }
 
     case "llm": {
-      const provider = getAiProvider();
-      const model = String(config.model ?? "mock-fast");
+      const legacyMockModel = String(config.model ?? "").startsWith("mock-");
+      const providerMode = String(
+        config.provider ?? (legacyMockModel ? "mock" : "saved"),
+      );
+      const provider = getAiProvider(providerMode);
+      const model = String(config.model ?? "");
       const temperature = Number(config.temperature ?? 0.4);
       let streamed = "";
 

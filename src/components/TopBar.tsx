@@ -3,18 +3,27 @@ import {
   FolderOpen,
   Github,
   Import,
+  KeyRound,
   Play,
   Save,
   Share2,
+  X,
   Trash2,
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { encodeWorkflow, safeJsonParse } from "../lib/utils";
+import {
+  clearModelSettings,
+  defaultModelSettings,
+  loadModelSettings,
+  saveModelSettings,
+  type ModelSettings,
+} from "../providers/modelSettings";
 import { useWorkflowStore } from "../store/workflowStore";
 import type { WorkflowSnapshot } from "../types/workflow";
 import { Badge } from "./ui/Badge";
 import { Button } from "./ui/Button";
-import { Input } from "./ui/Field";
+import { Field, Input, Select, Textarea } from "./ui/Field";
 
 export function TopBar() {
   const nodes = useWorkflowStore((state) => state.nodes);
@@ -30,6 +39,7 @@ export function TopBar() {
   const setWorkflow = useWorkflowStore((state) => state.setWorkflow);
   const [nameDraft, setNameDraft] = useState(workflowName);
   const [loadOpen, setLoadOpen] = useState(false);
+  const [modelOpen, setModelOpen] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -76,6 +86,14 @@ export function TopBar() {
         >
           <Play className="h-4 w-4" />
           {isRunning ? "Running" : "Run"}
+        </Button>
+        <Button
+          type="button"
+          onClick={() => setModelOpen(true)}
+          title="Configure model token"
+        >
+          <KeyRound className="h-4 w-4" />
+          Models
         </Button>
         <Button
           type="button"
@@ -152,6 +170,8 @@ export function TopBar() {
         </a>
       </div>
 
+      {modelOpen ? <ModelSettingsDialog onClose={() => setModelOpen(false)} /> : null}
+
       <input
         ref={fileInputRef}
         type="file"
@@ -174,6 +194,135 @@ export function TopBar() {
         }}
       />
     </header>
+  );
+}
+
+function ModelSettingsDialog({ onClose }: { onClose: () => void }) {
+  const [settings, setSettings] = useState<ModelSettings>(() => loadModelSettings());
+  const [status, setStatus] = useState<"idle" | "saved" | "cleared">("idle");
+
+  const update = (patch: Partial<ModelSettings>) => {
+    setStatus("idle");
+    setSettings((current) => ({ ...current, ...patch }));
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-zinc-950/35 p-6 backdrop-blur-sm">
+      <div className="w-full max-w-xl overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-2xl">
+        <div className="flex items-start gap-4 border-b border-zinc-200 p-5">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-teal-600 text-white">
+            <KeyRound className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold uppercase tracking-normal text-zinc-500">
+              Model Access
+            </p>
+            <h2 className="mt-1 text-lg font-semibold text-zinc-950">
+              Bring your own API token
+            </h2>
+            <p className="mt-1 text-sm leading-5 text-zinc-500">
+              Tokens are stored only in this browser and are used directly from
+              the static app.
+            </p>
+          </div>
+          <Button type="button" variant="ghost" size="icon" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="grid gap-4 p-5">
+          <Field label="Provider">
+            <Select
+              value={settings.provider}
+              onChange={(event) =>
+                update({ provider: event.target.value as ModelSettings["provider"] })
+              }
+            >
+              <option value="openai-compatible">OpenAI-compatible API</option>
+              <option value="mock">Mock provider</option>
+            </Select>
+          </Field>
+
+          <Field label="API token">
+            <Input
+              type="password"
+              autoComplete="off"
+              value={settings.apiKey}
+              placeholder="sk-..."
+              disabled={settings.provider === "mock"}
+              onChange={(event) => update({ apiKey: event.target.value })}
+            />
+          </Field>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Base URL">
+              <Input
+                value={settings.baseUrl}
+                disabled={settings.provider === "mock"}
+                onChange={(event) => update({ baseUrl: event.target.value })}
+              />
+            </Field>
+            <Field label="Default model">
+              <Input
+                value={settings.defaultModel}
+                placeholder="gpt-4.1-mini"
+                disabled={settings.provider === "mock"}
+                onChange={(event) => update({ defaultModel: event.target.value })}
+              />
+            </Field>
+          </div>
+
+          <Field label="Custom headers" hint='Optional JSON, for example {"X-Title":"FlowForge AI"}.'>
+            <Textarea
+              className="min-h-20 font-mono"
+              value={settings.customHeaders}
+              disabled={settings.provider === "mock"}
+              onChange={(event) => update({ customHeaders: event.target.value })}
+            />
+          </Field>
+
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-800">
+            Browser-only tokens are convenient for demos, but they are visible to
+            the person using the browser. For production teams, put provider
+            calls behind a small backend proxy.
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 border-t border-zinc-200 p-5">
+          <div className="text-sm text-zinc-500">
+            {status === "saved"
+              ? "Model settings saved."
+              : status === "cleared"
+                ? "Model settings cleared."
+                : "LLM nodes can use these saved settings."}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                clearModelSettings();
+                setSettings(defaultModelSettings);
+                setStatus("cleared");
+              }}
+            >
+              Clear
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => {
+                saveModelSettings(settings);
+                setStatus("saved");
+              }}
+            >
+              <Save className="h-4 w-4" />
+              Save Settings
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

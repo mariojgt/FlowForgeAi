@@ -30,7 +30,8 @@ export const nodeCatalog: NodeDefinition[] = [
     accent: "bg-fuchsia-500",
     icon: "Sparkles",
     defaultConfig: {
-      model: "mock-fast",
+      provider: "saved",
+      model: "",
       temperature: 0.4,
     },
   },

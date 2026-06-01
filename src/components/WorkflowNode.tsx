@@ -131,7 +131,10 @@ function previewConfig(data: WorkflowNodeData) {
   }
 
   if (data.nodeType === "llm") {
-    return `${data.config.model ?? "mock-fast"} at ${data.config.temperature ?? 0.4}`;
+    const provider =
+      data.config.provider === "mock" ? "Mock provider" : "Saved provider";
+    const model = data.config.model ? String(data.config.model) : "default model";
+    return `${provider} · ${model} at ${data.config.temperature ?? 0.4}`;
   }
 
   if (data.nodeType === "httpRequest") {
