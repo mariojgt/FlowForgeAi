@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { ModelSelect } from "./ModelSelect";
+import { loadModelSettings, type ModelProvider } from "../providers/modelSettings";
 import { useWorkflowStore } from "../store/workflowStore";
 import type { WorkflowConfig } from "../types/workflow";
 import { Badge } from "./ui/Badge";
@@ -206,12 +208,15 @@ function NodeConfigFields({
 
   if (nodeType === "llm") {
     const legacyMockModel = String(config.model ?? "").startsWith("mock-");
+    const providerMode = String(config.provider ?? (legacyMockModel ? "mock" : "saved"));
+    const modelProvider: ModelProvider =
+      providerMode === "mock" ? "mock" : loadModelSettings().provider;
 
     return (
       <div className="space-y-4">
         <Field label="Provider">
           <Select
-            value={String(config.provider ?? (legacyMockModel ? "mock" : "saved"))}
+            value={providerMode}
             onChange={(event) => updateConfig({ provider: event.target.value })}
           >
             <option value="saved">Saved model settings</option>
@@ -219,10 +224,11 @@ function NodeConfigFields({
           </Select>
         </Field>
         <Field label="Model">
-          <Input
+          <ModelSelect
+            provider={modelProvider}
             value={String(config.model ?? "")}
-            placeholder="Use saved default model"
-            onChange={(event) => updateConfig({ model: event.target.value })}
+            allowDefault={providerMode !== "mock"}
+            onChange={(model) => updateConfig({ model })}
           />
         </Field>
         <Field label={`Temperature: ${Number(config.temperature ?? 0.4).toFixed(1)}`}>

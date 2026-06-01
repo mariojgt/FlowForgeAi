@@ -18,7 +18,6 @@ import {
   clearModelSettings,
   defaultModelSettings,
   loadModelSettings,
-  modelPresets,
   providerDefaults,
   providerLabels,
   saveModelSettings,
@@ -29,6 +28,7 @@ import { useWorkflowStore } from "../store/workflowStore";
 import type { ViewMode, WorkflowSnapshot } from "../types/workflow";
 import { Badge } from "./ui/Badge";
 import { Button } from "./ui/Button";
+import { ModelSelect } from "./ModelSelect";
 import { Field, Input, Select, Textarea } from "./ui/Field";
 
 interface TopBarProps {
@@ -240,7 +240,6 @@ export function TopBar({ viewMode, onViewModeChange }: TopBarProps) {
 function ModelSettingsDialog({ onClose }: { onClose: () => void }) {
   const [settings, setSettings] = useState<ModelSettings>(() => loadModelSettings());
   const [status, setStatus] = useState<"idle" | "saved" | "cleared">("idle");
-  const selectedPresets = modelPresets[settings.provider];
 
   const update = (patch: Partial<ModelSettings>) => {
     setStatus("idle");
@@ -318,18 +317,12 @@ function ModelSettingsDialog({ onClose }: { onClose: () => void }) {
               />
             </Field>
             <Field label="Default model">
-              <Input
-                list="flowforge-model-presets"
+              <ModelSelect
+                provider={settings.provider}
                 value={settings.defaultModel}
-                placeholder={providerDefaults[settings.provider].defaultModel}
                 disabled={settings.provider === "mock"}
-                onChange={(event) => update({ defaultModel: event.target.value })}
+                onChange={(defaultModel) => update({ defaultModel })}
               />
-              <datalist id="flowforge-model-presets">
-                {selectedPresets.map((model) => (
-                  <option key={model} value={model} />
-                ))}
-              </datalist>
             </Field>
           </div>
 
