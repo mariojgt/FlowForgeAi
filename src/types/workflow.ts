@@ -41,6 +41,8 @@ export interface ExecutionLog {
   message: string;
 }
 
+export type ViewMode = "flow" | "chat";
+
 export interface NodeDefinition {
   type: NodeKind;
   label: string;
@@ -62,3 +64,9 @@ export interface ExecutionCallbacks {
 export type NodeOutput = Record<string, unknown> & {
   __branch?: "true" | "false";
 };
+
+export interface ExecutionResult {
+  outputs: Record<string, NodeOutput>;
+  finalOutput?: NodeOutput;
+  error?: string;
+}

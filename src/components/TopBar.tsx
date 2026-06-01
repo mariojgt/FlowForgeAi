@@ -4,6 +4,8 @@ import {
   Github,
   Import,
   KeyRound,
+  MessageCircle,
+  Network,
   Play,
   Save,
   Share2,
@@ -24,12 +26,17 @@ import {
   type ModelSettings,
 } from "../providers/modelSettings";
 import { useWorkflowStore } from "../store/workflowStore";
-import type { WorkflowSnapshot } from "../types/workflow";
+import type { ViewMode, WorkflowSnapshot } from "../types/workflow";
 import { Badge } from "./ui/Badge";
 import { Button } from "./ui/Button";
 import { Field, Input, Select, Textarea } from "./ui/Field";
 
-export function TopBar() {
+interface TopBarProps {
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
+}
+
+export function TopBar({ viewMode, onViewModeChange }: TopBarProps) {
   const nodes = useWorkflowStore((state) => state.nodes);
   const edges = useWorkflowStore((state) => state.edges);
   const workflowName = useWorkflowStore((state) => state.workflowName);
@@ -81,6 +88,32 @@ export function TopBar() {
       </div>
 
       <div className="flex items-center gap-2">
+        <div className="flex h-9 items-center rounded-md border border-zinc-200 bg-zinc-50 p-1">
+          <button
+            type="button"
+            className={`inline-flex h-7 items-center gap-1.5 rounded px-2 text-xs font-semibold transition ${
+              viewMode === "flow"
+                ? "bg-white text-zinc-950 shadow-sm"
+                : "text-zinc-500 hover:text-zinc-950"
+            }`}
+            onClick={() => onViewModeChange("flow")}
+          >
+            <Network className="h-3.5 w-3.5" />
+            Flow
+          </button>
+          <button
+            type="button"
+            className={`inline-flex h-7 items-center gap-1.5 rounded px-2 text-xs font-semibold transition ${
+              viewMode === "chat"
+                ? "bg-white text-zinc-950 shadow-sm"
+                : "text-zinc-500 hover:text-zinc-950"
+            }`}
+            onClick={() => onViewModeChange("chat")}
+          >
+            <MessageCircle className="h-3.5 w-3.5" />
+            Chat
+          </button>
+        </div>
         <Button
           type="button"
           variant="primary"
@@ -154,7 +187,10 @@ export function TopBar() {
           title="Copy share link"
           onClick={async () => {
             const url = new URL(window.location.href);
-            url.hash = `workflow=${encodeWorkflow(snapshot)}`;
+            const params = new URLSearchParams();
+            params.set("workflow", encodeWorkflow(snapshot));
+            params.set("view", viewMode);
+            url.hash = params.toString();
             await navigator.clipboard.writeText(url.toString());
             setShareCopied(true);
             window.setTimeout(() => setShareCopied(false), 1400);

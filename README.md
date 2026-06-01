@@ -15,6 +15,7 @@ FlowForge AI runs entirely in the browser and is designed for GitHub Pages. It l
 - Save, load, rename, and delete workflows in `localStorage`
 - JSON import/export plus drag-and-drop workflow import
 - Shareable URL hashes for portable workflows
+- Flow view and chat view, with shared links able to open directly as a chat app
 - Template-based AI workflow generator
 - GitHub Pages deployment via GitHub Actions
 
@@ -43,6 +44,10 @@ The app is served with a `/FlowForgeAi/` base path to match the GitHub Pages dep
 Open the `Models` control in the top bar to choose OpenAI-compatible, Anthropic Claude, Google Gemini, or Mock mode. Add the API token, base URL, and default model for the selected provider. Tokens are stored only in the current browser with `localStorage`; they are never committed to the repository or exported with workflows.
 
 The OpenAI-compatible provider uses `/chat/completions`, Anthropic uses `/messages`, and Google Gemini uses `streamGenerateContent`. Providers must allow browser requests from GitHub Pages, otherwise the request can be blocked by CORS. For production use, route model calls through a backend proxy instead of calling providers directly from the browser.
+
+## Chat View
+
+Use the `Flow` and `Chat` view switcher in the top bar to move between builder mode and end-user chat mode. Chat view sends each user message through the first Input node and returns the final Output node as the assistant reply. The share link preserves the selected view, so builders can send a workflow as a normal chat interface.
 
 ## Build
 

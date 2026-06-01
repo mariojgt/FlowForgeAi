@@ -8,7 +8,7 @@ import {
 } from "@xyflow/react";
 import { create } from "zustand";
 import { defaultConfigFor } from "../data/nodeCatalog";
-import { executeWorkflow } from "../engine/executionEngine";
+import { executeWorkflow, outputToText } from "../engine/executionEngine";
 import type {
   ExecutionLog,
   FlowEdge,
@@ -152,6 +152,7 @@ interface WorkflowStore {
   renameWorkflow: (id: string, name: string) => void;
   refreshWorkflows: () => void;
   runWorkflow: () => Promise<void>;
+  runWorkflowForChat: (message: string) => Promise<string>;
   clearLogs: () => void;
   setBottomPanelOpen: (isOpen: boolean) => void;
 }
@@ -338,7 +339,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
     });
 
     try {
-      await executeWorkflow(get().nodes, get().edges, {
+      const result = await executeWorkflow(get().nodes, get().edges, {
         onStatus: (nodeId, status, patch) => {
           set((current) => ({
             nodes: current.nodes.map((node) =>
@@ -374,6 +375,10 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
         },
       });
 
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
       set((current) => ({
         logs: [
           ...current.logs,
@@ -398,6 +403,141 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
           },
         ],
       }));
+    } finally {
+      set((current) => ({
+        isRunning: false,
+        edges: current.edges.map((edge) => ({ ...edge, animated: false })),
+      }));
+    }
+  },
+
+  runWorkflowForChat: async (message) => {
+    const state = get();
+    if (state.isRunning) {
+      throw new Error("A workflow run is already in progress.");
+    }
+
+    const inputNodeId = state.nodes.find(
+      (node) => node.data.nodeType === "input",
+    )?.id;
+
+    if (!inputNodeId) {
+      throw new Error("Add an Input node before using Chat view.");
+    }
+
+    const runNodes = state.nodes.map((node) =>
+      node.id === inputNodeId
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              config: {
+                ...node.data.config,
+                value: message,
+              },
+            },
+          }
+        : node,
+    );
+
+    set({
+      isRunning: true,
+      isBottomPanelOpen: true,
+      logs: [
+        {
+          id: uid("log"),
+          timestamp: formatTime(),
+          level: "info",
+          message: "Chat run started.",
+        },
+      ],
+      nodes: state.nodes.map((node) => ({
+        ...node,
+        data: {
+          ...node.data,
+          status: "idle",
+          result: undefined,
+          error: undefined,
+          elapsedMs: undefined,
+        },
+      })),
+      edges: state.edges.map((edge) => ({ ...edge, animated: false })),
+    });
+
+    try {
+      const result = await executeWorkflow(runNodes, get().edges, {
+        onStatus: (nodeId, status, patch) => {
+          set((current) => ({
+            nodes: current.nodes.map((node) =>
+              node.id === nodeId
+                ? {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      ...patch,
+                      status,
+                    },
+                  }
+                : node,
+            ),
+            edges: current.edges.map((edge) =>
+              edge.source === nodeId || edge.target === nodeId
+                ? { ...edge, animated: status === "running" }
+                : edge,
+            ),
+          }));
+        },
+        onLog: (log) => {
+          set((current) => ({
+            logs: [
+              ...current.logs,
+              {
+                ...log,
+                id: uid("log"),
+                timestamp: formatTime(),
+              },
+            ],
+          }));
+        },
+      });
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      const text = outputToText(result.finalOutput).trim();
+      if (!text) {
+        throw new Error("Workflow completed without producing an output.");
+      }
+
+      set((current) => ({
+        logs: [
+          ...current.logs,
+          {
+            id: uid("log"),
+            timestamp: formatTime(),
+            level: "success",
+            message: "Chat run finished.",
+          },
+        ],
+      }));
+
+      return text;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Chat run failed.";
+      set((current) => ({
+        logs: [
+          ...current.logs,
+          {
+            id: uid("log"),
+            timestamp: formatTime(),
+            level: "error",
+            message: errorMessage,
+          },
+        ],
+      }));
+      throw new Error(errorMessage);
     } finally {
       set((current) => ({
         isRunning: false,

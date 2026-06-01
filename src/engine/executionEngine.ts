@@ -1,5 +1,6 @@
 import type {
   ExecutionCallbacks,
+  ExecutionResult,
   FlowEdge,
   FlowNode,
   NodeOutput,
@@ -19,6 +20,22 @@ function stringifyValue(value: unknown) {
   } catch {
     return String(value);
   }
+}
+
+export function outputToText(output?: NodeOutput) {
+  if (!output) {
+    return "";
+  }
+
+  const direct =
+    output.response ??
+    output.prompt ??
+    output.text ??
+    output.message ??
+    output.data ??
+    output;
+
+  return stringifyValue(direct);
 }
 
 function pickInput(inputs: NodeOutput[]) {
@@ -261,10 +278,10 @@ export async function executeWorkflow(
   nodes: FlowNode[],
   edges: FlowEdge[],
   callbacks: ExecutionCallbacks,
-) {
+): Promise<ExecutionResult> {
   if (nodes.length === 0) {
     callbacks.onLog({ level: "warning", message: "Add nodes before running." });
-    return;
+    return { outputs: {} };
   }
 
   const nodeMap = new Map(nodes.map((node) => [node.id, node]));
@@ -328,7 +345,40 @@ export async function executeWorkflow(
         level: "error",
         message: `${node.data.label} failed: ${message}`,
       });
-      break;
+      return {
+        outputs: Object.fromEntries(outputs),
+        finalOutput: findFinalOutput(nodes, order, outputs),
+        error: message,
+      };
     }
   }
+
+  return {
+    outputs: Object.fromEntries(outputs),
+    finalOutput: findFinalOutput(nodes, order, outputs),
+  };
+}
+
+function findFinalOutput(
+  nodes: FlowNode[],
+  order: string[],
+  outputs: Map<string, NodeOutput>,
+) {
+  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+  const outputNodeIds = order.filter(
+    (nodeId) => nodeMap.get(nodeId)?.data.nodeType === "output" && outputs.has(nodeId),
+  );
+  const preferredId = outputNodeIds[outputNodeIds.length - 1];
+  if (preferredId) {
+    return outputs.get(preferredId);
+  }
+
+  for (const nodeId of [...order].reverse()) {
+    const output = outputs.get(nodeId);
+    if (output) {
+      return output;
+    }
+  }
+
+  return undefined;
 }

@@ -9,8 +9,9 @@ import {
   type NodeTypes,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { BottomPanel } from "./components/BottomPanel";
+import { ChatView } from "./components/ChatView";
 import { NodeLibrary } from "./components/NodeLibrary";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { TopBar } from "./components/TopBar";
@@ -18,7 +19,7 @@ import { WorkflowNode } from "./components/WorkflowNode";
 import { isNodeKind } from "./data/nodeCatalog";
 import { decodeWorkflow, safeJsonParse } from "./lib/utils";
 import { useWorkflowStore } from "./store/workflowStore";
-import type { FlowEdge, FlowNode } from "./types/workflow";
+import type { FlowEdge, FlowNode, ViewMode } from "./types/workflow";
 
 const nodeTypes: NodeTypes = {
   workflowNode: WorkflowNode,
@@ -45,19 +46,6 @@ function FlowCanvas() {
     },
     [fitView, setWorkflow],
   );
-
-  useEffect(() => {
-    const hash = window.location.hash.replace(/^#workflow=/, "");
-    if (!hash) {
-      return;
-    }
-
-    const decoded = decodeWorkflow<{ nodes: FlowNode[]; edges: FlowEdge[] }>(hash);
-    if (decoded?.nodes && decoded?.edges) {
-      setWorkflow(decoded.nodes, decoded.edges, "Shared Workflow");
-      window.setTimeout(() => fitView({ padding: 0.2, duration: 500 }), 80);
-    }
-  }, [fitView, setWorkflow]);
 
   return (
     <ReactFlow
@@ -121,24 +109,74 @@ function FlowCanvas() {
 }
 
 export default function App() {
+  const [viewMode, setViewMode] = useState<ViewMode>(() => readSharedViewMode());
+  const setWorkflow = useWorkflowStore((state) => state.setWorkflow);
+
+  useEffect(() => {
+    const shared = readSharedWorkflow();
+    if (shared.workflow) {
+      const decoded = decodeWorkflow<{ nodes: FlowNode[]; edges: FlowEdge[] }>(
+        shared.workflow,
+      );
+      if (decoded?.nodes && decoded?.edges) {
+        setWorkflow(decoded.nodes, decoded.edges, "Shared Workflow");
+      }
+    }
+
+    if (shared.view) {
+      setViewMode(shared.view);
+    }
+  }, [setWorkflow]);
+
   return (
     <ReactFlowProvider>
       <div className="flex h-screen min-h-[720px] flex-col bg-zinc-100 text-zinc-950">
-        <TopBar />
-        <div className="flex min-h-0 flex-1">
-          <NodeLibrary />
-          <main className="flex min-w-0 flex-1 flex-col">
-            <div className="relative min-h-0 flex-1 bg-[#f6f7f9]">
-              <FlowCanvas />
-              <div className="pointer-events-none absolute left-4 top-4 rounded-lg border border-zinc-200 bg-white/90 px-3 py-2 text-xs text-zinc-600 shadow-sm backdrop-blur">
-                Drop nodes or JSON workflows onto the canvas
+        <TopBar viewMode={viewMode} onViewModeChange={setViewMode} />
+        {viewMode === "flow" ? (
+          <div className="flex min-h-0 flex-1">
+            <NodeLibrary />
+            <main className="flex min-w-0 flex-1 flex-col">
+              <div className="relative min-h-0 flex-1 bg-[#f6f7f9]">
+                <FlowCanvas />
+                <div className="pointer-events-none absolute left-4 top-4 rounded-lg border border-zinc-200 bg-white/90 px-3 py-2 text-xs text-zinc-600 shadow-sm backdrop-blur">
+                  Drop nodes or JSON workflows onto the canvas
+                </div>
               </div>
-            </div>
+              <BottomPanel />
+            </main>
+            <SettingsPanel />
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <ChatView />
             <BottomPanel />
-          </main>
-          <SettingsPanel />
-        </div>
+          </div>
+        )}
       </div>
     </ReactFlowProvider>
   );
+}
+
+function readSharedWorkflow() {
+  const raw = window.location.hash.replace(/^#/, "");
+  if (!raw) {
+    return {};
+  }
+
+  if (raw.startsWith("workflow=") && !raw.includes("&")) {
+    const legacyWorkflow = raw.slice("workflow=".length);
+    if (decodeWorkflow(legacyWorkflow)) {
+      return { workflow: legacyWorkflow };
+    }
+  }
+
+  const params = new URLSearchParams(raw);
+  const workflow = params.get("workflow") ?? undefined;
+  const view = params.get("view") === "chat" ? "chat" : params.get("view") === "flow" ? "flow" : undefined;
+
+  return { workflow, view: view as ViewMode | undefined };
+}
+
+function readSharedViewMode(): ViewMode {
+  return readSharedWorkflow().view ?? "flow";
 }
